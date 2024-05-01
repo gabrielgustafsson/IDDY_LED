@@ -3,12 +3,13 @@
 #include <string>
 #include <MiscUtilities.h>
 #include <algorithm>
+#include <vector>
+#include <functional>
 
 #define BELA_RNBO_USE_MIDI // uncomment to use MIDI
-//#define BELA_RNBO_USE_TRILL // uncomment to use Trill
-//#define BELA_RNBO_LOAD_DEPENDENCIES // uncomment to load dependencies such as audio files
+#define BELA_RNBO_USE_TRILL // uncomment to use Trill
 
-// The code for BELA_RNBO_LOAD_DEPENDENCIES follows closely the example [here](https://rnbo.cycling74.com/learn/loading-file-dependencies)
+//#define BELA_RNBO_LOAD_DEPENDENCIES // uncomment to load dependencies such as audio files
 
 #ifdef BELA_RNBO_USE_TRILL
 #include <libraries/Trill/Trill.h>
@@ -22,26 +23,29 @@ static const unsigned int kNoParam = -1; // use this below if you want to skip a
 // are set at every block, which means that the default value or the value set
 // by a preset will be immediately overridden if the corresponding paramter is
 // controlled by analogIn
-static std::vector<unsigned int> parametersFromAnalog = {1};
+static std::vector<unsigned int> parametersFromAnalog = {0,23};
 // same but for mapping digital ins to parameters. These are only updated upon
 // change, so preset-loaded values are not necessarily overridden immediately
-static std::vector<unsigned int> parametersFromDigital = {kNoParam,
-	kNoParam,
-	kNoParam,
-	kNoParam,
-	2,7};
+static std::vector<unsigned int> parametersFromDigital = {kNoParam,kNoParam,kNoParam,kNoParam,
+kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,kNoParam,8,18};
 // mapping parameters to digital out, e.g.: to display a toggle state with an LED
-static std::vector<unsigned int> parametersToDigital = {3,4,5,6,kNoParam,kNoParam,8,9,10,11};
+static std::vector<unsigned int> parametersToDigital = {9,12,14,16,19,20,21,22,1};
 #ifdef BELA_RNBO_USE_TRILL
 // same but for mapping Trill location to parameters.
 static std::vector<unsigned int> parametersFromTrillLocation = {};
+// same but for mapping Trill horizontal location to parameters.
+static std::vector<unsigned int> parametersFromTrillHorizontalLocation = {kNoParam,kNoParam,2,11};
 // same but for mapping Trill size to parameters.
-static std::vector<unsigned int> parametersFromTrillSize = {};
+static std::vector<unsigned int> parametersFromTrillSize = {kNoParam,kNoParam,3,13};
 static std::vector<Trill*> trills {
-	// add/edit more Trills here
-	new Trill(1, Trill::BAR),
+    // add/edit more Trills here
+    new Trill(1, Trill::BAR, 0x20),
+    new Trill(1, Trill::BAR, 0x21),
+    new Trill(1, Trill::HEX, 0x40),
+    new Trill(1, Trill::HEX, 0x41),
 };
 static std::vector<float> trillLocationParametersPast(parametersFromTrillLocation.size());
+static std::vector<float> trillHorizontalLocationParametersPast(parametersFromTrillHorizontalLocation.size());
 static std::vector<float> trillSizeParametersPast(parametersFromTrillSize.size());
 #endif // BELA_RNBO_USE_TRILL
 
@@ -196,6 +200,7 @@ bool setup(BelaContext *context, void *userData)
 	parametersFromDigital.resize(std::min(parametersFromDigital.size(), context->digitalChannels));
 #ifdef BELA_RNBO_USE_TRILL
 	parametersFromTrillLocation.resize(std::min(parametersFromTrillLocation.size(), trills.size()));
+	parametersFromTrillHorizontalLocation.resize(std::min(parametersFromTrillHorizontalLocation.size(), trills.size()));
 	parametersFromTrillSize.resize(std::min(parametersFromTrillSize.size(), trills.size()));
 #endif // BELA_RNBO_USE_TRILL
 	unsigned int hiddenParameters = 0;
@@ -215,6 +220,7 @@ bool setup(BelaContext *context, void *userData)
 		ssize_t digitalOut = findIndex(n, parametersToDigital);
 #ifdef BELA_RNBO_USE_TRILL
 		ssize_t trillLocation = findIndex(n, parametersFromTrillLocation);
+		ssize_t trillHorizontalLocation = findIndex(n, parametersFromTrillHorizontalLocation);
 		ssize_t trillSize = findIndex(n, parametersFromTrillSize);
 #endif // BELA_RNBO_USE_TRILL
 		if(analog >= 0)
@@ -230,6 +236,8 @@ bool setup(BelaContext *context, void *userData)
 #ifdef BELA_RNBO_USE_TRILL
 		if(trillLocation >= 0)
 			printf(" - controlled by Trill location %d", trillLocation);
+		if(trillHorizontalLocation >= 0)
+			printf(" - controlled by Trill horizontal location %d", trillHorizontalLocation);
 		if(trillSize >= 0)
 			printf(" - controlled by Trill size %d", trillSize);
 #endif // BELA_RNBO_USE_TRILL
@@ -312,6 +320,7 @@ void render(BelaContext *context, void *userData)
 #endif // BELA_RNBO_USE_MIDI
 #ifdef BELA_RNBO_USE_TRILL
 	sendOnChange(trillLocationParametersPast, parametersFromTrillLocation, [](unsigned int c, void*) -> float { return trills[c]->compoundTouchLocation(); });
+	sendOnChange(trillHorizontalLocationParametersPast, parametersFromTrillHorizontalLocation, [](unsigned int c, void*) -> float { return trills[c]->compoundTouchHorizontalLocation(); });
 	sendOnChange(trillSizeParametersPast, parametersFromTrillSize, [](unsigned int c, void*) -> float { return trills[c]->compoundTouchSize(); });
 #endif // BELA_RNBO_USE_TRILL
 
